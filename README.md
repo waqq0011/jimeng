@@ -18,9 +18,9 @@
 2. 打开Chrome浏览器，进入扩展管理页面：`chrome://extensions/`
 3. 开启右上角的"开发者模式"
 4. 点击左上角的"加载已解压的扩展程序"
-5. ![image](https://github.com/user-attachments/assets/d7a4d329-fe2c-4564-927d-dd66f5531570)
-6. 选择下载的文件夹
-7. 安装完成
+![image](https://github.com/user-attachments/assets/175d242d-d55e-4449-9a08-07716cfd06a9)
+5. 选择下载的文件夹
+6. 安装完成
 
 ## 使用方法
 
