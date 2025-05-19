@@ -1,25 +1,13 @@
 // 轻量级无水印下载器 - 只在用户交互时激活
 console.log('剪映无水印下载器已加载 - 轻量版');
 
-// 存储当前右击的图片或视频元素
-let rightClickedImage = null;
-let rightClickedVideo = null;
 // 面板状态：展开或最小化
 let isPanelMinimized = false;
 
-// 监听右键菜单事件
-document.addEventListener('contextmenu', function(event) {
-  if (event.target.tagName === 'IMG') {
-    rightClickedImage = event.target;
-    rightClickedVideo = null;
-  } else if (event.target.tagName === 'VIDEO') {
-    rightClickedVideo = event.target;
-    rightClickedImage = null;
-  } else {
-    rightClickedImage = null;
-    rightClickedVideo = null;
-  }
-}, true);
+// 检查当前网站是否为豆包网站
+function isDoubaoWebsite() {
+  return window.location.hostname.includes('doubao.com');
+}
 
 // 在页面上创建一个浮动控制面板
 function createControlPanel() {
@@ -743,6 +731,52 @@ function initialize() {
       setupIconClickHandlers();
     }
   });
+
+  // 特殊处理豆包网站的图片
+  if (isDoubaoWebsite()) {
+    console.log('检测到豆包网站，启用特殊处理...');
+    // 使用MutationObserver监听DOM变化，以便在图片加载后捕获它们
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+          // 检查添加的节点是否包含我们感兴趣的图片
+          setTimeout(() => {
+            const doubaoImages = document.querySelectorAll('[data-testid="in_painting_picture"]');
+            if (doubaoImages.length > 0) {
+              console.log('找到豆包图片元素:', doubaoImages.length);
+              // 如果找到了图片，可以选择第一个并显示面板
+              const controls = getOrCreateControlPanel();
+              
+              // 添加点击事件处理程序
+              doubaoImages.forEach(img => {
+                // 防止重复添加事件处理程序
+                img.removeEventListener('click', handleDoubaoPictureClick);
+                img.addEventListener('click', handleDoubaoPictureClick);
+              });
+            }
+          }, 500); // 稍微延迟，确保图片已完全加载
+        }
+      });
+    });
+
+    // 配置观察器
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    // 也处理已经在页面上的图片
+    setTimeout(() => {
+      const doubaoImages = document.querySelectorAll('[data-testid="in_painting_picture"]');
+      if (doubaoImages.length > 0) {
+        console.log('页面中已有豆包图片元素:', doubaoImages.length);
+        doubaoImages.forEach(img => {
+          img.removeEventListener('click', handleDoubaoPictureClick);
+          img.addEventListener('click', handleDoubaoPictureClick);
+        });
+      }
+    }, 1000);
+  }
   
   // 创建控制面板
   setTimeout(() => {
@@ -768,25 +802,38 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       togglePanelSize();
     }
     sendResponse({success: true});
-  } else if (request.action === "downloadNoWatermark") {
-    // 如果从右键菜单触发的下载
-    if (rightClickedImage) {
-      selectedImage = rightClickedImage;
-      selectedVideo = null;
-      downloadSelectedImage();
-    } else {
-      showNotification('请先右键点击一张图片', true);
-    }
-    sendResponse({success: true});
-  } else if (request.action === "downloadVideo") {
-    // 如果从右键菜单触发的视频下载
-    if (rightClickedVideo) {
-      selectedVideo = rightClickedVideo;
-      selectedImage = null;
-      downloadSelectedVideo();
-    } else {
-      showNotification('请先右键点击一个视频', true);
-    }
-    sendResponse({success: true});
   }
-}); 
+});
+
+// 处理豆包图片点击事件的特殊函数
+function handleDoubaoPictureClick(event) {
+  console.log('豆包图片被点击');
+  const img = event.currentTarget;
+  
+  // 获取控制面板
+  const controls = getOrCreateControlPanel();
+  
+  // 更新选中的媒体
+  selectedImage = img;
+  selectedVideo = null;
+  
+  // 恢复面板显示（如果已最小化）
+  if (isPanelMinimized) {
+    togglePanelSize();
+  }
+  
+  // 更新状态
+  controls.status.textContent = '已选择豆包图片，可以下载或复制';
+  controls.status.style.color = '#52c41a';
+  
+  // 更新按钮文本
+  controls.downloadBtn.textContent = '下载图片';
+  controls.copyBtn.textContent = '复制图片';
+  
+  // 启用按钮
+  controls.downloadBtn.disabled = false;
+  controls.copyBtn.disabled = false;
+  
+  // 在控制台显示图片URL（调试用）
+  console.log('选中豆包图片URL:', selectedImage.src);
+} 
